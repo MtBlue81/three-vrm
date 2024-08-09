@@ -3,7 +3,6 @@ import type * as V1VRMSchema from '@pixiv/types-vrmc-vrm-1.0';
 import * as THREE from 'three';
 import { GLTF, GLTFLoaderPlugin, GLTFParser } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { gltfExtractPrimitivesFromNode } from '../utils/gltfExtractPrimitivesFromNode';
-import { gltfGetAssociatedMaterialIndex } from '../utils/gltfGetAssociatedMaterialIndex';
 import { VRMExpression } from './VRMExpression';
 import { VRMExpressionManager } from './VRMExpressionManager';
 import { v0ExpressionMaterialColorMap } from './VRMExpressionMaterialColorType';
@@ -192,7 +191,7 @@ export class VRMExpressionLoaderPlugin implements GLTFLoaderPlugin {
 
           schemaExpression.materialColorBinds?.forEach(async (bind) => {
             const materials = gltfMaterials.filter((material) => {
-              const materialIndex = gltfGetAssociatedMaterialIndex(this.parser, material);
+              const materialIndex = this.parser.associations.get(material)?.materials;
               return bind.material === materialIndex;
             });
 
@@ -202,6 +201,7 @@ export class VRMExpressionLoaderPlugin implements GLTFLoaderPlugin {
                   material,
                   type: bind.type,
                   targetValue: new THREE.Color().fromArray(bind.targetValue),
+                  targetAlpha: bind.targetValue[3],
                 }),
               );
             });
@@ -209,7 +209,7 @@ export class VRMExpressionLoaderPlugin implements GLTFLoaderPlugin {
 
           schemaExpression.textureTransformBinds?.forEach(async (bind) => {
             const materials = gltfMaterials.filter((material) => {
-              const materialIndex = gltfGetAssociatedMaterialIndex(this.parser, material);
+              const materialIndex = this.parser.associations.get(material)?.materials;
               return bind.material === materialIndex;
             });
 
@@ -394,7 +394,8 @@ export class VRMExpressionLoaderPlugin implements GLTFLoaderPlugin {
                   new VRMExpressionMaterialColorBind({
                     material,
                     type: materialColorType,
-                    targetValue: new THREE.Color(...materialValue.targetValue!.slice(0, 3)),
+                    targetValue: new THREE.Color().fromArray(materialValue.targetValue!),
+                    targetAlpha: materialValue.targetValue![3],
                   }),
                 );
 
