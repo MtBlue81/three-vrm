@@ -58,14 +58,20 @@ export class VRMAnimationLoaderPlugin implements GLTFLoaderPlugin {
     }
 
     const specVersion = defExtension.specVersion;
-    if (!POSSIBLE_SPEC_VERSIONS.has(specVersion)) {
-      console.warn(`VRMAnimationLoaderPlugin: Unknown VRMC_vrm_animation spec version: ${specVersion}`);
-      return;
-    }
-    if (specVersion === '1.0-draft') {
+    if (specVersion == null) {
       console.warn(
-        'VRMAnimationLoaderPlugin: Using a draft spec version: 1.0-draft. Some behaviors may be different. Consider updating the animation file.',
+        'VRMAnimationLoaderPlugin: specVersion of the VRMA is not defined. Consider updating the animation file. Assuming the spec version is 1.0.',
       );
+    } else {
+      if (!POSSIBLE_SPEC_VERSIONS.has(specVersion)) {
+        console.warn(`VRMAnimationLoaderPlugin: Unknown VRMC_vrm_animation spec version: ${specVersion}`);
+        return;
+      }
+      if (specVersion === '1.0-draft') {
+        console.warn(
+          'VRMAnimationLoaderPlugin: Using a draft spec version: 1.0-draft. Some behaviors may be different. Consider updating the animation file.',
+        );
+      }
     }
 
     const nodeMap = this._createNodeMap(defExtension);
@@ -77,11 +83,11 @@ export class VRMAnimationLoaderPlugin implements GLTFLoaderPlugin {
     const restHipsPosition = new THREE.Vector3();
     hips?.getWorldPosition(restHipsPosition);
 
-    // If the rest hips position is approximately zero,
+    // If the y component of the rest hips position is approximately zero or below,
     // it is considered that the animation violates the VRM T-pose
-    if (restHipsPosition.lengthSq() < 1e-6) {
+    if (restHipsPosition.y < 1e-3) {
       console.warn(
-        'VRMAnimationLoaderPlugin: The loaded VRM Animation violates the VRM T-pose (The rest hips position is approximately zero.)',
+        'VRMAnimationLoaderPlugin: The loaded VRM Animation might violate the VRM T-pose (The y component of the rest hips position is approximately zero or below.)',
       );
     }
 
@@ -199,7 +205,9 @@ export class VRMAnimationLoaderPlugin implements GLTFLoaderPlugin {
         while (parentBoneName != null && worldMatrixMap.get(parentBoneName) == null) {
           parentBoneName = VRMHumanBoneParentMap[parentBoneName];
         }
-        parentBoneName ?? (parentBoneName = 'hipsParent');
+        if (parentBoneName == null) {
+          parentBoneName = 'hipsParent';
+        }
 
         if (path === 'translation') {
           if (boneName !== 'hips') {
